@@ -59,7 +59,7 @@ jobs:
             --format json \
             --output image-trivy-report.json \
             --severity HIGH,CRITICAL \
-            --ignore-fixed \
+            --ignore-unfixed \
             --exit-code 0
 
       - name: Run Trivy image scan (table)
@@ -70,7 +70,7 @@ jobs:
           --format table \
           --output image-trivy-report.txt \
           --serverity HIGH,CRITICAL \ 
-          --ignore-fixed \
+          --ignore-unfixed \
           --exit-code 0
       
       - name: Upload Trivy image json report
