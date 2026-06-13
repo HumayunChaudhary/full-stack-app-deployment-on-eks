@@ -39,4 +39,4 @@ jobs:
         run: |
          docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
          docker tag $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $REGISTRY/$ECR_REPOSITORY:latest
-         docker push $REGISTRY/$ECR_REPOSITORY:lastest
+         docker push $REGISTRY/$ECR_REPOSITORY:latest
