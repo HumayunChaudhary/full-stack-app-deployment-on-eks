@@ -52,21 +52,25 @@ jobs:
           which trivy
 
       - name: Run Trivy image scan (json)
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          trivy image $REGISTRY/$ECR_REPOSITORY:latest \
+          trivy --image $REGISTRY/$ECR_REPOSITORY:latest \
             --format json \
             --output image-trivy-report.json \
             --severity HIGH,CRITICAL \
-            --ignore-unfixed \
+            --ignore-fixed \
             --exit-code 0
 
       - name: Run Trivy image scan (table)
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           trivy image $REGISTRY/$ECR_REPOSITORY:latest \
           --format table \
           --output image-trivy-report.txt \
           --serverity HIGH,CRITICAL \ 
-          --ignore-unfixed \
+          --ignore-fixed \
           --exit-code 0
       
       - name: Upload Trivy image json report
@@ -84,4 +88,6 @@ jobs:
           if-no-files-found: warn
 
       - name: Push image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: docker push $REGISTRY/$ECR_REPOSITORY:latest
