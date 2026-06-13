@@ -69,7 +69,7 @@ jobs:
           trivy image $REGISTRY/$ECR_REPOSITORY:latest \
           --format table \
           --output image-trivy-report.txt \
-          --severity HIGH,CRITICAL \ 
+          --severity HIGH,CRITICAL \
           --ignore-unfixed \
           --exit-code 0
       
