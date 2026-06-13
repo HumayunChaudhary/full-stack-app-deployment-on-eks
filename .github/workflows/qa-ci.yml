@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Trivy image scan (json)
         run: |
-          trivy --image $REGISTRY/$ECR_REPOSITORY:latest \
+          trivy image $REGISTRY/$ECR_REPOSITORY:latest \
             --format json \
             --output image-trivy-report.json \
             --severity HIGH,CRITICAL \
