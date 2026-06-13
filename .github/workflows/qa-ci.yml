@@ -39,4 +39,49 @@ jobs:
         run: |
          docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
          docker tag $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $REGISTRY/$ECR_REPOSITORY:latest
-         docker push $REGISTRY/$ECR_REPOSITORY:latest
+         
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.2.6
+        with:
+          version: latest
+          cache: true
+      
+      - name: Verify Trivy installation
+        run: |
+          trivy --version
+          which trivy
+
+      - name: Run Trivy image scan (json)
+        run: |
+          trivy --image $REGISTRY/$ECR_REPOSITORY:latest \
+            --format json \
+            --output image-trivy-report.json \
+            --severity HIGH,CRITICAL \
+            --ignore-fixed \
+            --exit-code 0
+
+      - name: Run Trivy image scan (table)
+        run: |
+          trivy image $REGISTRY/$ECR_REPOSITORY:latest \
+          --format table \
+          --output image-trivy-report.txt \
+          --serverity HIGH,CRITICAL \ 
+          --ignore-fixed \
+          --exit-code 0
+      
+      - name: Upload Trivy image json report
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-trivy-report-json
+          path: image-trivy-report.json
+          if-no-files-found: warn
+
+      - name: Upload Trivy image table report
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-trivy-report-table
+          path: image-trivy-report.txt
+          if-no-files-found: warn
+
+      - name: Push image to ECR
+        run: docker push $REGISTRY/$ECR_REPOSITORY:latest
