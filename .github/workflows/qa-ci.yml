@@ -94,7 +94,12 @@ jobs:
     steps:
       - name: Checkout qa branch
         uses: actions/checkout@v4
+<<<<<<< HEAD
         
+=======
+        with:
+          ref: qa
+>>>>>>> origin/qa
       - name: Update image tag in manifest
         run: |
           sed -i "s|image: humayun27/nodejs-app:.*|image: humayun27/nodejs-app:${GITHUB_SHA}|g" k8-manifests/qa/app-deployment.yaml
@@ -106,5 +111,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add k8-manifests/qa/app-deployment.yaml
+<<<<<<< HEAD
           git commit -m "Update QA image to ${GITHUB_SHA} [skip ci]" || echo "No changes to commit"
+=======
+          git commit -m "Updated QA image to ${GITHUB_SHA} [skip ci]" || echo "No changes to commit"
+>>>>>>> origin/qa
           git push origin qa
