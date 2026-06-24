@@ -113,6 +113,9 @@ jobs:
     name: Deploy to Kubernetes
     needs: update-qa-manifest
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     env:
       AWS_REGION: us-east-1
       EKS_CLUSTER_NAME: cluster-01
