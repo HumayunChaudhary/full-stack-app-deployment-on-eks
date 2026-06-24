@@ -108,3 +108,37 @@ jobs:
           git add k8-manifests/qa/app-deployment.yaml
           git commit -m "Update QA image to ${GITHUB_SHA} [skip ci]" || echo "No changes to commit"
           git push origin qa
+  
+  deploy-to-k8s:
+    name: Deploy to Kubernetes
+    needs: update-qa-manifest
+    runs-on: ubuntu:latest
+    env:
+      AWS_REGION: us-east-1
+      EKS_CLUSTER_NAME: cluster-01
+      K8S_NAMESPACE: qa
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v4
+        with:
+          ref: qa
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Generate kubeconfig for EKS
+        uses: aws eks update-kubeconfig --region "${{AWS_REGION}}" --name "${{EKS_CLUSTER_NAME}}"
+
+      - name: Verify identity
+        run: |
+          aws sts get-caller-identity
+          kubectl config current-context
+
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f k8-manifests/qa/ -n "${{K8S_NAMESPACE}}"
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deployment/nodejs-app -n "${{K8S_NAMESPACE}}" --timeout=180s
