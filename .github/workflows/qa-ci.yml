@@ -110,7 +110,7 @@ jobs:
           git push origin qa
   
   deploy-to-k8s:
-    name: Deploy to Kubernetes
+    name: Deploy to K8s
     needs: update-qa-manifest
     runs-on: ubuntu-latest
     permissions:
