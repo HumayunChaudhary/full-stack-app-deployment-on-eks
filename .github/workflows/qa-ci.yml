@@ -112,7 +112,7 @@ jobs:
   deploy-to-k8s:
     name: Deploy to Kubernetes
     needs: update-qa-manifest
-    runs-on: ubuntu:latest
+    runs-on: ubuntu-latest
     env:
       AWS_REGION: us-east-1
       EKS_CLUSTER_NAME: cluster-01
@@ -124,11 +124,17 @@ jobs:
         with:
           ref: qa
 
+      - name: Configure AWS credentials from GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
 
       - name: Generate kubeconfig for EKS
-        uses: aws eks update-kubeconfig --region "${{AWS_REGION}}" --name "${{EKS_CLUSTER_NAME}}"
+        run: aws eks update-kubeconfig --region "${{AWS_REGION}}" --name "${{EKS_CLUSTER_NAME}}"
 
       - name: Verify identity
         run: |
