@@ -45,10 +45,10 @@ function App() {
                 <div className="brand">DevOps Shack</div>
                 <div className="nav-links">
                     <a className="home" href="/">Home</a>
-                    <a className="youtube" href="https://www.youtube.com/@devopsshack/videos">YouTube</a>
-                    <a className="courses" href="https://www.devopsshack.com/">Courses</a>
-                    <a className="telegram" href="https://t.me/+9roGPjX1YI42Yzdl">Telegram</a>
-                    <a className="instagram" href="https://www.instagram.com/devopsshack/">Instagram</a>
+                    <a className="youtube" href="https://www.youtube.com/">YouTube</a>
+                    <a className="courses" href="https://thyson.online/">Courses</a>
+                    <a className="telegram" href="https://telegram.com">Telegram</a>
+                    <a className="instagram" href="https://www.instagram.com/">Instagram</a>
                 </div>
             </div>
             <h1>User Management App</h1>
