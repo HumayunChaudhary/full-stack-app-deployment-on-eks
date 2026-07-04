@@ -85,7 +85,7 @@ jobs:
             humayun27/nodejs-app:${{ github.sha }}
             humayun27/nodejs-app:latest
 
-  update-qa-manifest:
+  update-qa-manifests:
     name: Update QA Manifest
     needs: docker
     runs-on: ubuntu-latest
