@@ -85,7 +85,7 @@ jobs:
             humayun27/nodejs-app:${{ github.sha }}
             humayun27/nodejs-app:latest
 
-  update-qa-manifests:
+  update-qa-manifestss:
     name: Update QA Manifest
     needs: docker
     runs-on: ubuntu-latest
@@ -111,7 +111,7 @@ jobs:
   
   deploy-to-k8s:
     name: Deploy to K8s
-    needs: update-qa-manifests
+    needs: update-qa-manifestss
     runs-on: ubuntu-latest
     permissions:
       id-token: write
