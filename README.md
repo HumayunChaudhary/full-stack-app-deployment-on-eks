@@ -421,3 +421,296 @@ Example responsibilities include:
 - Backend service selection
 
 ---
+
+# Persistent Storage
+
+Stateless applications can be recreated at any time without losing data. Databases, however, require persistent storage to preserve information across pod restarts and node replacements.
+
+To provide durable storage for MySQL, this project uses **Amazon Elastic Block Store (Amazon EBS)** together with the **Amazon EBS CSI Driver**.
+
+This approach enables Kubernetes to dynamically provision storage volumes without requiring manual intervention.
+
+---
+
+# Amazon EBS CSI Driver
+
+The Amazon EBS CSI (Container Storage Interface) Driver is installed as an Amazon EKS add-on.
+
+Rather than manually creating EBS volumes through the AWS Console or Terraform for every database instance, Kubernetes requests storage automatically.
+
+When a Persistent Volume Claim (PVC) is created, the CSI Driver performs the following operations:
+
+1. Receives the storage request from Kubernetes.
+2. Creates an Amazon EBS volume.
+3. Attaches the volume to the EC2 worker node.
+4. Mounts the volume inside the MySQL pod.
+5. Detaches and reattaches the volume automatically if the pod moves to another node.
+
+This eliminates manual storage management while allowing applications to request storage declaratively.
+
+---
+
+#  StorageClass
+
+The cluster defines a StorageClass that determines how persistent storage should be provisioned.
+
+Current configuration:
+
+| Property | Value |
+|----------|-------|
+| Provisioner | Amazon EBS CSI Driver |
+| Volume Type | gp2 |
+| Volume Binding | WaitForFirstConsumer |
+
+Using `WaitForFirstConsumer` delays volume creation until Kubernetes schedules the pod.
+
+This ensures the EBS volume is created in the same Availability Zone as the node where the pod will run, preventing cross-AZ attachment issues.
+
+---
+
+#  Persistent Volumes
+
+When the MySQL StatefulSet requests storage:
+
+```
+PersistentVolumeClaim
+        │
+        ▼
+StorageClass
+        │
+        ▼
+Amazon EBS CSI Driver
+        │
+        ▼
+Amazon EBS Volume
+        │
+        ▼
+Mounted into MySQL Pod
+```
+
+Even if:
+
+- the MySQL container crashes,
+- the pod is recreated,
+- the node is replaced,
+
+the data remains safely stored on the Amazon EBS volume.
+
+---
+
+#  MySQL StatefulSet
+
+Unlike application pods, databases require stable identities and persistent storage.
+
+For this reason, MySQL is deployed as a **StatefulSet** instead of a Deployment.
+
+Benefits include:
+
+- Stable pod names
+- Stable DNS names
+- Ordered startup
+- Ordered shutdown
+- Persistent volumes
+- Data durability
+
+
+---
+
+#  Secrets Management
+
+One of the core design principles of this project is **never storing secrets inside Git repositories**.
+
+Instead of committing credentials into Kubernetes manifests, all application secrets are managed centrally in **AWS Secrets Manager**.
+
+Examples include:
+
+- Database username
+- Database password
+- Application secrets
+- API credentials
+
+
+---
+
+#  AWS Secrets Manager
+
+Sensitive application configuration is stored securely in AWS Secrets Manager.
+
+Example secret:
+
+```
+qa/mysql-secret
+```
+
+The application never communicates directly with Secrets Manager.
+
+Instead, a dedicated Kubernetes operator synchronizes secrets into the cluster.
+
+Benefits include:
+
+- Encryption at rest
+- Fine-grained IAM access
+- Centralized secret management
+- Secret rotation support
+- Version history
+
+---
+
+#  External Secrets Operator
+
+The External Secrets Operator (ESO) continuously synchronizes secrets from AWS Secrets Manager into Kubernetes.
+
+The synchronization process is automatic.
+
+```
+AWS Secrets Manager
+          │
+          ▼
+External Secrets Operator
+          │
+          ▼
+Kubernetes Secret
+          │
+          ▼
+Application Pods
+```
+
+If a secret changes in AWS Secrets Manager, the operator automatically updates the corresponding Kubernetes Secret without requiring manual intervention.
+
+This provides a secure and scalable approach to secret management.
+
+---
+
+#  Kubernetes Secrets
+
+Although applications ultimately consume Kubernetes Secrets, these secrets are **not manually created**.
+
+Instead, they are generated automatically by the External Secrets Operator.
+
+Application pods reference the Kubernetes Secret exactly as they would any native Kubernetes resource, while the actual source of truth remains AWS Secrets Manager.
+
+This separation simplifies application development while maintaining enterprise-grade security.
+
+---
+
+# 🛡️ IAM Roles for Service Accounts (IRSA)
+
+One of the most important security features of this architecture is the use of **IAM Roles for Service Accounts (IRSA).**
+
+Without IRSA, Kubernetes workloads typically require:
+
+- AWS Access Key
+- AWS Secret Key
+
+inside Pods or Kubernetes Secrets.
+
+This project completely avoids that approach.
+
+Instead, AWS permissions are assigned directly to Kubernetes Service Accounts.
+
+The authentication flow is:
+
+```
+Pod
+ │
+ ▼
+Service Account
+ │
+ ▼
+IAM Role (IRSA)
+ │
+ ▼
+AWS STS
+ │
+ ▼
+Temporary AWS Credentials
+ │
+ ▼
+AWS Secrets Manager
+```
+
+The pod automatically receives short-lived AWS credentials without ever storing static credentials inside the cluster.
+
+
+---
+
+#  Least Privilege Access
+
+The IAM role attached to the External Secrets Operator grants only the permissions required to retrieve secrets from AWS Secrets Manager.
+
+No unnecessary AWS permissions are granted.
+
+This follows the Principle of Least Privilege (PoLP), reducing the potential impact of compromised workloads.
+
+---
+
+#  Pod Security Groups
+
+Application pods are associated with dedicated Pod Security Groups.
+
+These security groups control network communication at the pod level rather than only at the worker node level.
+
+Benefits include:
+
+- Fine-grained traffic control
+- Improved workload isolation
+- Reduced lateral movement
+- Enhanced security
+
+---
+
+#  High Availability
+
+The infrastructure is designed to remain operational even if an Availability Zone becomes unavailable.
+
+High availability is achieved through:
+
+- Multi-AZ VPC
+- Multi-AZ Managed Node Groups
+- Multiple private subnets
+- Multiple public subnets
+- Redundant NAT Gateways
+- Internet-facing Application Load Balancer
+- Kubernetes self-healing
+- Replica-based application deployments
+
+If a worker node fails:
+
+- Kubernetes automatically reschedules affected pods.
+- Services continue routing traffic to healthy pods.
+- The Application Load Balancer stops sending traffic to unhealthy targets.
+
+
+---
+
+#  Self-Healing
+
+Amazon EKS continuously monitors application health.
+
+If a container crashes:
+
+- Kubernetes restarts the container.
+
+If a pod fails:
+
+- Kubernetes creates a replacement pod.
+
+If a worker node becomes unhealthy:
+
+- Managed Node Groups automatically replace the node.
+
+This self-healing behavior ensures the desired application state is continuously maintained.
+
+---
+
+#  Scalability
+
+The platform is designed to scale horizontally.
+
+Application Deployments can be increased simply by raising the replica count.
+
+Because Services automatically load balance across available pods, no infrastructure changes are required to distribute traffic.
+
+Combined with the Application Load Balancer, this architecture can support increasing application demand while maintaining availability.
+
+---
