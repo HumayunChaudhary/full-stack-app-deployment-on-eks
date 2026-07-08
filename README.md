@@ -14,11 +14,7 @@ Unlike many sample projects that rebuild applications for each environment, this
 
 # Architecture Diagram
 
-> **Note**
->
-> The domain was purchased through **GoDaddy**, while DNS is hosted and managed using **Amazon Route 53**.
-
-![Architecture](docs/images/architecture.png)
+<img width="1536" height="1024" alt="readme" src="https://github.com/user-attachments/assets/d63b7b09-a373-408a-8029-d0fd820d6f5a" />
 
 ---
 
