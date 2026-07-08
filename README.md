@@ -714,3 +714,334 @@ Because Services automatically load balance across available pods, no infrastruc
 Combined with the Application Load Balancer, this architecture can support increasing application demand while maintaining availability.
 
 ---
+#  Enterprise DevSecOps CI/CD Pipeline
+
+This project implements a complete **Enterprise DevSecOps CI/CD pipeline** using **GitHub Actions**.
+
+The pipeline is designed around the principle of **Shift Left Security**, ensuring that security, code quality, testing, and compliance checks are executed before any deployment occurs.
+
+The workflow follows a staged promotion model:
+
+```
+Developer
+    │
+    ▼
+Push to QA Branch
+    │
+    ▼
+QA CI/CD Pipeline
+    │
+    ├── Secret Scanning
+    ├── IaC Scanning
+    ├── Dockerfile Scanning
+    ├── Kubernetes Manifest Scanning
+    ├── Filesystem Vulnerability Scanning
+    ├── Linting
+    ├── Unit Testing
+    ├── SonarQube Analysis
+    ├── Docker Build
+    ├── Image Vulnerability Scan
+    ├── SBOM Generation
+    ├── Push Image to Private Docker Hub
+    ├── Update QA Manifest
+    └── Deploy to QA EKS
+            │
+            ▼
+QA Validation
+            │
+            ▼
+Pull Request
+            │
+            ▼
+Merge into Main
+            │
+            ▼
+Production Promotion Pipeline
+            │
+            ├── Pull Tested QA Image
+            ├── Retag Image
+            ├── Push Production Tag
+            ├── Update Production Manifest
+            └── Deploy to Production EKS
+```
+
+---
+
+#  QA Deployment Workflow
+
+The QA pipeline is automatically triggered whenever code is pushed to the **qa** branch.
+
+```yaml
+on:
+  push:
+    branches:
+      - qa
+```
+
+
+---
+
+#  Stage 1 – Secret Scanning
+
+The pipeline begins by detecting accidentally committed secrets using **Gitleaks**.
+
+Examples include:
+
+- AWS Keys
+- GitHub Tokens
+- Database Passwords
+- API Keys
+- Private Keys
+- Authentication Tokens
+
+Scanning source code before building Docker images prevents sensitive information from entering downstream environments.
+
+---
+
+#  Stage 2 – Infrastructure Security Scanning
+
+Infrastructure definitions are scanned using **Checkov**.
+
+Three different scan types are executed independently.
+
+## Terraform Scan
+
+Terraform configurations are analyzed for:
+
+- Publicly exposed resources
+- Weak IAM permissions
+- Security Group misconfigurations
+- Encryption settings
+- Networking best practices
+
+---
+
+## Kubernetes Manifest Scan
+
+Kubernetes manifests are scanned for common security issues such as:
+
+- Privileged containers
+- Missing resource limits
+- Host networking
+- Insecure capabilities
+- Missing security contexts
+
+---
+
+## Dockerfile Scan
+
+Dockerfiles are analyzed for insecure build practices including:
+
+- Running containers as root
+- Untrusted base images
+- Missing HEALTHCHECK instructions
+- Excessive privileges
+- Package management issues
+
+---
+
+#  Stage 3 – Filesystem Vulnerability Scanning
+
+Before building container images, **Trivy** scans both application directories.
+
+Separate scans are executed for:
+
+- Client
+- Server
+
+The scans identify:
+
+- Vulnerable packages
+- Known CVEs
+- Critical dependencies
+- High-risk libraries
+
+Both JSON and human-readable reports are uploaded as GitHub Action artifacts.
+
+---
+
+#  Stage 4 – Code Quality
+
+Application quality is verified through linting.
+
+Separate lint jobs are executed for:
+
+- Node.js frontend
+
+Linting helps detect:
+
+- Syntax errors
+- Code style violations
+- Potential programming mistakes
+
+This improves maintainability and consistency.
+
+---
+
+#  Stage 5 – Unit Testing
+
+After linting completes successfully, automated tests are executed.
+
+
+Testing before containerization helps ensure application functionality before deployment.
+
+---
+
+#  Stage 6 – SonarQube Analysis
+
+Once testing completes, the pipeline performs static code analysis using SonarQube.
+
+The analysis evaluates:
+
+- Bugs
+- Code Smells
+- Security Hotspots
+- Vulnerabilities
+- Technical Debt
+- Code Coverage
+
+The pipeline also performs a **Quality Gate** check before continuing.
+
+This provides continuous insight into overall code quality.
+
+---
+
+#  Stage 7 – Docker Build
+
+After all security and quality checks pass, the application image is built.
+
+Two image tags are generated.
+
+```
+latest
+
+<git-sha>
+```
+
+Using immutable Git commit hashes allows every deployment to be traced back to the exact source code revision.
+
+---
+
+#  Stage 8 – Container Image Scanning
+
+Before publishing the image, Trivy scans the built container image.
+
+The scan checks:
+
+- Operating System packages
+- Installed libraries
+- Language dependencies
+- Known vulnerabilities
+- Critical CVEs
+
+Only after image scanning completes is the image considered ready for publication.
+
+---
+
+#  Stage 9 – Software Bill of Materials (SBOM)
+
+To improve software supply chain transparency, the pipeline generates Software Bills of Materials (SBOMs).
+
+Two SBOMs are produced.
+
+- Source Code SBOM
+- Container Image SBOM
+
+These artifacts provide complete inventories of dependencies included within the application.
+
+---
+
+#  Stage 10 – Docker Hub Private Registry
+
+This project stores container images in a **private Docker Hub repository**.
+
+The pipeline authenticates using GitHub Secrets before pushing images.
+
+Published image tags include:
+
+```
+humayun27/nodejs-app:latest
+
+humayun27/nodejs-app:<git-sha>
+```
+
+Maintaining a private registry ensures application images remain inaccessible to unauthorized users while providing centralized image storage.
+
+---
+
+#  Stage 11 – GitOps Manifest Update
+
+Once the image has been published, GitHub Actions automatically updates the Kubernetes deployment manifest.
+
+The image reference inside the QA deployment is replaced with the newly generated Git commit SHA.
+
+Example:
+
+Before
+
+```yaml
+image: humayun27/nodejs-app:latest
+```
+
+After
+
+```yaml
+image: humayun27/nodejs-app:26367361c959c67d4aa0d003d0544d9
+```
+
+The updated manifest is committed back to the **qa** branch.
+
+This creates a GitOps-style deployment history where Git always reflects the exact version deployed to Kubernetes.
+
+---
+
+#  Stage 12 – QA Deployment
+
+Finally, GitHub Actions authenticates with AWS using **GitHub OIDC**, generates a kubeconfig for the EKS cluster, and applies the Kubernetes manifests to the **qa** namespace.
+
+After deployment, the pipeline verifies that the rollout completed successfully before marking the workflow as successful.
+
+---
+
+#  Promotion to Production
+
+Unlike many CI/CD implementations, the production pipeline **does not rebuild the application**.
+
+Instead, it promotes the exact Docker image that was already deployed and validated in the QA environment.
+
+The workflow is:
+
+1. A developer opens a Pull Request from the **qa** branch to the **main** branch.
+2. After QA approval, the Pull Request is merged.
+3. The production workflow pulls the `latest` image from the private Docker Hub repository.
+4. The image is retagged using the format:
+
+```text
+prod-<git-sha>
+```
+
+5. The retagged image is pushed back to the private Docker Hub repository.
+6. The production Kubernetes manifest is updated with the new production image tag.
+7. GitHub Actions deploys the updated manifests to the **prod** namespace in Amazon EKS.
+8. Kubernetes performs a rolling update and verifies the rollout.
+
+This approach guarantees that **the exact artifact tested in QA is the one deployed to production**, eliminating the risk of environment drift caused by rebuilding images.
+
+---
+
+#  Secure AWS Authentication with GitHub OIDC
+
+The deployment workflows authenticate to AWS using **GitHub OpenID Connect (OIDC)**.
+
+Instead of storing long-lived AWS access keys as GitHub Secrets, GitHub requests a short-lived identity token, which AWS Security Token Service (STS) exchanges for temporary credentials.
+
+Benefits include:
+
+- No static AWS access keys
+- Temporary credentials
+- Automatic credential rotation
+- Reduced credential leakage risk
+- Least privilege access through IAM roles
+
+
+---
