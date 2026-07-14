@@ -41,3 +41,10 @@ jobs:
       - name: Verify the update
         run: |
           cat k8-manifests/app-deployment.yaml
+      - name: Commit and push updated manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8-manifests/app-deployment.yaml
+          git commit -m "Updated image in app-deployment.yaml [skip ci]"
+          git push origin main
