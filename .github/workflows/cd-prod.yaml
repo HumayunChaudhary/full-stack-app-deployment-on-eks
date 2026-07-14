@@ -28,6 +28,7 @@ jobs:
 
   update-prod-k8s-manifest:
     name: Update K8S manifest
+    needs: promote-image-to-prod
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main branch
