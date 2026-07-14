@@ -25,3 +25,15 @@ jobs:
         run: docker tag "${QA_IMAGE}" "${PROD_IMAGE}"
       - name: Push prod image
         run: docker push "${PROD_IMAGE}"
+
+  update-prod-k8s-manifest:
+    name: Update K8S manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Update image tag in manifest
+        run: |
+          sed -i "s|image: humayun27/nodejs-app:*|image: humayun27/nodejs-app:prod-${}GITHUB_SHA|g" k8-manifests/app-deployment.yaml
