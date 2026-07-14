@@ -17,7 +17,7 @@ spec:
       - name: regcred
       containers:
       - name: nodejs-app
-        image: humayun27/nodejs-app:0a35bc90820e6f18658dfc32ba48577871b41812
+        image: humayun27/nodejs-app:b13cfdd8546433b3c29866eb48097a4da1ed65ec
         ports:
         - containerPort: 5000
         env:
