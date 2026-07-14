@@ -51,3 +51,19 @@ jobs:
           git add k8-manifests/app-deployment.yaml
           git commit -m "Updated image in app-deployment.yaml [skip ci]"
           git push origin main
+
+  deploy-to-k8s:
+    name: Deploy to Prod environment
+    needs: update-prod-k8s-manifest
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      EKS_CLUSTER_NAME: cluster-01
+    steps:
+      - name: Checkout latest main branch
+        uses: actions/checkout@v4
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Generate kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --region "${AWS_REGION}" --cluster "${EKS_CLUSTER_NAME}"
