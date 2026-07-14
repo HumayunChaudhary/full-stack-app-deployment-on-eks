@@ -18,7 +18,7 @@ jobs:
         uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
-          passowrd: ${{ secrets.DOCKERHUB_TOKEN }}
+          passwOrd: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Pull qa image
         run: docker pull "${QA_IMAGE}"
       - name: Tag image for prod
